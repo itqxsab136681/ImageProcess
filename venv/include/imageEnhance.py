@@ -1,23 +1,27 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2 as cv
-import random
 import math
+import random
+
+import cv2 as cv
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-def histequal4e(I):
+def myEqualizeHist(I):
     rows, cols = I.shape
     array = np.zeros(256)
 
+    # 统计像素个数
     for i in range(rows):
         for j in range(cols):
             array[I[i][j]] += 1
 
+    # 算累计概率
     sum = 0
     for ary in range(0, len(array)):
         sum += array[ary] / (rows * cols)
         array[ary] = sum
 
+    # 求均衡化后的像素值
     newI = np.zeros(I.shape)
     for i in range(rows):
         for j in range(cols):
@@ -26,6 +30,7 @@ def histequal4e(I):
     return newI
 
 
+# 添加椒盐噪声
 def pepperNoise(count, I):
     rows, cols = I.shape
     newI = np.copy(I)
@@ -37,64 +42,50 @@ def pepperNoise(count, I):
     return newI
 
 
-def edgeFilter(noiseI):
-    rows, cols = noiseI.shape
+# 有选择保边缘平滑方法
+def edgeFilter(noise):
+    rows, cols = noise.shape
+    deNoise = np.zeros(noise.shape)
     # 生成滤波模板下标数组
-    maskRect = np.array([1 + cols, 2 + cols, 3 + cols, 1 + cols * 2, 2 + cols * 2, 3 + cols * 2, 1 + cols * 3,
-                         2 + cols * 3, 3 + cols * 3])
+    maskRect = np.ones(9).reshape(3, 3)
 
-    maskPent1 = np.array([1, 2, 3, 1 + cols, 2 + cols, 3 + cols, 2 + cols * 2])
-    maskPent2 = np.array([cols, 1 + cols, cols * 2, cols * 2 + 1, cols * 2 + 2, cols * 3, cols * 3 + 1])
-    maskPent3 = np.array([cols * 2 + 2, cols * 3 + 1, cols * 3 + 2, cols * 3 + 3, cols * 4 + 1, cols * 4 + 2,
-                          cols * 4 + 3])
-    maskPent4 = np.array([cols * 1 + 3, cols * 1 + 4, cols * 2 + 2, cols * 2 + 3, cols * 2 + 4, cols * 3 + 3,
-                          cols * 3 + 4])
+    maskPentTop = np.array([1, 1, 1, 1, 1, 1, 0, 1, 0]).reshape(3, 3)
+    maskPentLeft = np.array([1, 1, 0, 1, 1, 1, 1, 1, 0]).reshape(3, 3)
+    maskPentBottom = np.array([0, 1, 0, 1, 1, 1, 1, 1, 1]).reshape(3, 3)
+    maskPentRight = np.array([0, 1, 1, 1, 1, 1, 0, 1, 1]).reshape(3, 3)
 
-    maskHexagon1 = np.array([0, 1, cols, cols + 1, cols + 2, cols * 2 + 1, cols * 2 + 2])
-    maskHexagon2 = np.array([3, 4, cols + 2, cols + 3, cols + 4, cols * 2 + 2, cols * 2 + 3])
-    maskHexagon3 = np.array([cols * 2 + 1, cols * 2 + 2, cols * 3, cols * 3 + 1, cols * 3 + 2, cols * 4, cols * 4 + 1])
-    maskHexagon4 = np.array([cols * 2 + 2, cols * 2 + 3, cols * 3 + 2, cols * 3 + 3, cols * 3 + 4, cols * 4 + 3,
-                             cols * 4 + 4])
+    maskHexagon1 = np.array([1, 1, 0, 1, 1, 1, 0, 1, 1]).reshape(3, 3)
+    maskHexagon2 = np.array([0, 1, 1, 1, 1, 1, 1, 1, 0]).reshape(3, 3)
+    maskHexagon3 = np.array([0, 1, 1, 1, 1, 1, 1, 1, 0]).reshape(3, 3)
+    maskHexagon4 = np.array([1, 1, 0, 1, 1, 1, 0, 1, 1]).reshape(3, 3)
 
-    newI = np.zeros(noiseI.shape)
-    array_mean = np.ndarray(9)
-    array_var = np.ndarray(9)
-    noiseI = noiseI.flatten()
-    for i in range(rows):
-        for j in range(cols):
-            array_var = np.zeros(array_var.shape)
-            array_mean = np.zeros(array_mean.shape)
-            # 对边缘不作处理
-            if 1 < i < rows - 4 and 1 < j < cols - 4:
-                for m in range(9):
-                    array_mean[0] += noiseI[maskRect[m] + i * cols + j] / 9
-                    if m < 7:
-                        array_mean[1] += noiseI[maskPent1[m] + i * cols + j] / 7
-                        array_mean[2] += noiseI[maskPent2[m] + i * cols + j] / 7
-                        array_mean[3] += noiseI[maskPent3[m] + i * cols + j] / 7
-                        array_mean[4] += noiseI[maskPent4[m] + i * cols + j] / 7
-                        array_mean[5] += noiseI[maskHexagon1[m] + i * cols + j] / 7
-                        array_mean[6] += noiseI[maskHexagon2[m] + i * cols + j] / 7
-                        array_mean[7] += noiseI[maskHexagon3[m] + i * cols + j] / 7
-                        array_mean[8] += noiseI[maskHexagon4[m] + i * cols + j] / 7
+    for i in range(2, rows - 2):
+        for j in range(2, cols - 2):
+            maskList = []
+            array_var = []
+            maskList.append(noise[i - 2:i + 1, j - 2:j + 1] * maskHexagon1)
+            maskList.append(noise[i - 2:i + 1, j - 1:j + 2] * maskPentTop)
+            maskList.append(noise[i - 2:i + 1, j:j + 3] * maskHexagon2)
+            maskList.append(noise[i - 1:i + 2, j - 2:j + 1] * maskPentLeft)
+            maskList.append(noise[i - 1:i + 2, j - 1:j + 2] * maskRect)
+            maskList.append(noise[i - 1:i + 2, j:j + 3] * maskPentRight)
+            maskList.append(noise[i:i + 3, j - 2:j + 1] * maskHexagon3)
+            maskList.append(noise[i:i + 3, j - 1:j + 2] * maskPentBottom)
+            maskList.append(noise[i:i + 3, j:j + 3] * maskHexagon4)
 
-                for n in range(9):
-                    array_var[0] += math.pow(noiseI[maskRect[n] + i * cols + j] - array_mean[0], 2)
-                    if n < 7:
-                        array_var[1] += math.pow(noiseI[maskPent1[n] + i * cols + j] - array_mean[1], 2)
-                        array_var[2] += math.pow(noiseI[maskPent2[n] + i * cols + j] - array_mean[2], 2)
-                        array_var[3] += math.pow(noiseI[maskPent3[n] + i * cols + j] - array_mean[3], 2)
-                        array_var[4] += math.pow(noiseI[maskPent4[n] + i * cols + j] - array_mean[4], 2)
-                        array_var[5] += math.pow(noiseI[maskHexagon1[n] + i * cols + j] - array_mean[5], 2)
-                        array_var[6] += math.pow(noiseI[maskHexagon2[n] + i * cols + j] - array_mean[6], 2)
-                        array_var[7] += math.pow(noiseI[maskHexagon3[n] + i * cols + j] - array_mean[7], 2)
-                        array_var[8] += math.pow(noiseI[maskHexagon4[n] + i * cols + j] - array_mean[8], 2)
+            array_var.append(np.var(noise[i - 2:i + 1, j - 2:j + 1] * maskHexagon1))
+            array_var.append(np.var(noise[i - 2:i + 1, j - 1:j + 2] * maskPentTop))
+            array_var.append(np.var(noise[i - 2:i + 1, j:j + 3] * maskHexagon2))
+            array_var.append(np.var(noise[i - 1:i + 2, j - 2:j + 1] * maskPentLeft))
+            array_var.append(np.var(noise[i - 1:i + 2, j - 1:j + 2] * maskRect))
+            array_var.append(np.var(noise[i - 1:i + 2, j:j + 3] * maskPentRight))
+            array_var.append(np.var(noise[i:i + 3, j - 2:j + 1] * maskHexagon3))
+            array_var.append(np.var(noise[i:i + 3, j - 1:j + 2] * maskPentBottom))
+            array_var.append(np.var(noise[i:i + 3, j:j + 3] * maskHexagon4))
 
-                newI[i][j] = array_mean[np.argmin(array_var)]
-            else:
-                newI[i][j] = noiseI[i * cols + j]
+            deNoise[i, j] = np.mean(maskList[array_var.index(min(array_var))])
 
-    return newI
+    return deNoise[2:rows - 2, 2:cols - 2]
 
 
 def laplacianEnhance(f):
@@ -123,34 +114,34 @@ def show(f, s, a, b, c):
 
 def main():
     # 直方图均衡
-    f = plt.imread("cameraman.tif", 0)
+    original = plt.imread("cameraman.tif", 0)
+    myE = myEqualizeHist(original)
+    openE = cv.equalizeHist(original)
     plt.figure()
-    show(f, "original", 2, 2, 1)
-    newf = histequal4e(f)
-    show(newf, "changed", 2, 2, 2)
-    equ = cv.equalizeHist(f)
-    show(equ, "changequ", 2, 2, 3)
-    c = equ - newf
-    show(c, "c", 2, 2, 4)
+    show(original, "original", 2, 2, 1)
+    show(myE, "myE", 2, 2, 2)
+    show(openE, "openE", 2, 2, 3)
+    c = openE - myE
+    show(c, "openE - myE", 2, 2, 4)
     plt.show()
 
-    # 图片平滑去噪
-    noiseI = pepperNoise(5120, f)
+    # 图片保边缘平滑去噪
+    noise = pepperNoise(512, original)
     plt.figure()
-    show(noiseI, "noiseI", 1, 2, 1)
-    newI = edgeFilter(noiseI)
+    show(noise, "noiseI", 1, 2, 1)
+    newI = edgeFilter(noise)
     show(newI, "deblur", 1, 2, 2)
     plt.show()
 
     # 拉普拉斯增强
-    bf = cv.GaussianBlur(f, (5, 5), 0)
+    bf = cv.GaussianBlur(original, (5, 5), 0)
     enImage = laplacianEnhance(bf)
     plt.figure()
-    show(f, "original", 2, 2, 1)
+    show(original, "original", 2, 2, 1)
 
-    ret, dst1 = cv.threshold(f + enImage, 255, 255, cv.THRESH_TRUNC)
+    ret, dst1 = cv.threshold(original + enImage, 255, 255, cv.THRESH_TRUNC)
     show(dst1, "enImage", 2, 2, 2)
-    ret, dst2 = cv.threshold(f + cv.Laplacian(bf, ddepth=-1), 255, 255, cv.THRESH_TRUNC)
+    ret, dst2 = cv.threshold(original + cv.Laplacian(bf, ddepth=-1), 255, 255, cv.THRESH_TRUNC)
     show(dst2, "cv.Laplacian(f)", 2, 2, 3)
 
     show(dst1 - dst2, "-", 2, 2, 4)
