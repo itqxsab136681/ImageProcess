@@ -99,7 +99,7 @@ def hp(f):
     for i in range(rows):
         for j in range(cols):
             temp = (i - rows / 2) ** 2 + (j - cols / 2) ** 2
-            f_d_mask[i, j] = (2 - 0.2) * (1 - np.exp(- 0.1 * temp / 2 * (DX ** 2))) + 0.2
+            f_d_mask[i, j] = (2 - 0.2) * (1 - np.exp(- 0.1 * temp / (2 * (DX ** 2)))) + 0.2
     f_d1 = np.fft.ifftshift(f_d * f_d_mask)
 
     f_d_gray1 = np.fft.ifft2(f_d1).real
