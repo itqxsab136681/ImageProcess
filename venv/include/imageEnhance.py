@@ -1,6 +1,6 @@
 import math
 import random
-
+import time
 import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,17 +61,17 @@ def edgeFilter(noise):
 
     for i in range(2, rows - 2):
         for j in range(2, cols - 2):
-            maskList = []
+            array_mean = []
             array_var = []
-            maskList.append(noise[i - 2:i + 1, j - 2:j + 1] * maskHexagon1)
-            maskList.append(noise[i - 2:i + 1, j - 1:j + 2] * maskPentTop)
-            maskList.append(noise[i - 2:i + 1, j:j + 3] * maskHexagon2)
-            maskList.append(noise[i - 1:i + 2, j - 2:j + 1] * maskPentLeft)
-            maskList.append(noise[i - 1:i + 2, j - 1:j + 2] * maskRect)
-            maskList.append(noise[i - 1:i + 2, j:j + 3] * maskPentRight)
-            maskList.append(noise[i:i + 3, j - 2:j + 1] * maskHexagon3)
-            maskList.append(noise[i:i + 3, j - 1:j + 2] * maskPentBottom)
-            maskList.append(noise[i:i + 3, j:j + 3] * maskHexagon4)
+            array_mean.append(np.mean(noise[i - 2:i + 1, j - 2:j + 1] * maskHexagon1))
+            array_mean.append(np.mean(noise[i - 2:i + 1, j - 1:j + 2] * maskPentTop))
+            array_mean.append(np.mean(noise[i - 2:i + 1, j:j + 3] * maskHexagon2))
+            array_mean.append(np.mean(noise[i - 1:i + 2, j - 2:j + 1] * maskPentLeft))
+            array_mean.append(np.mean(noise[i - 1:i + 2, j - 1:j + 2] * maskRect))
+            array_mean.append(np.mean(noise[i - 1:i + 2, j:j + 3] * maskPentRight))
+            array_mean.append(np.mean(noise[i:i + 3, j - 2:j + 1] * maskHexagon3))
+            array_mean.append(np.mean(noise[i:i + 3, j - 1:j + 2] * maskPentBottom))
+            array_mean.append(np.mean(noise[i:i + 3, j:j + 3] * maskHexagon4))
 
             array_var.append(np.var(noise[i - 2:i + 1, j - 2:j + 1] * maskHexagon1))
             array_var.append(np.var(noise[i - 2:i + 1, j - 1:j + 2] * maskPentTop))
@@ -83,7 +83,7 @@ def edgeFilter(noise):
             array_var.append(np.var(noise[i:i + 3, j - 1:j + 2] * maskPentBottom))
             array_var.append(np.var(noise[i:i + 3, j:j + 3] * maskHexagon4))
 
-            deNoise[i, j] = np.mean(maskList[array_var.index(min(array_var))])
+            deNoise[i, j] = array_mean[array_var.index(min(array_var))]
 
     return deNoise[2:rows - 2, 2:cols - 2]
 
@@ -125,12 +125,14 @@ def main():
     show(c, "openE - myE", 2, 2, 4)
     plt.show()
 
+    start = time.time()
     # 图片保边缘平滑去噪
     noise = pepperNoise(512, original)
     plt.figure()
     show(noise, "noiseI", 1, 2, 1)
     newI = edgeFilter(noise)
     show(newI, "deblur", 1, 2, 2)
+    print(time.time() - start)
     plt.show()
 
     # 拉普拉斯增强
