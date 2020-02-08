@@ -1,6 +1,7 @@
 import math
 import random
 import time
+
 import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,12 +95,9 @@ def laplacianEnhance(f):
     newI = np.zeros(f.shape, dtype=np.float)
     # opencv 里默认的3*3模板
     mask = np.array([-2, 0, -2, 0, 8, 0, -2, 0, -2]).reshape(3, 3)
-    for i in range(rows):
-        for j in range(cols):
-            if 1 < i < rows - 2 and 1 < j < cols - 2:
-                newI[i][j] = np.sum(np.dot(f[i - 1:i + 2, j - 1:j + 2], mask))
-            else:
-                newI[i][j] = f[i][j]
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
+            newI[i][j] = np.sum(np.dot(f[i - 1:i + 2, j - 1:j + 2], mask))
 
     newI = newI.clip(0, 255)
     return newI
