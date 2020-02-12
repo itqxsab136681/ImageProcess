@@ -1,3 +1,5 @@
+import random
+
 import cv2
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -17,6 +19,43 @@ def wgn(x, snr):
     xpower = np.sum(x ** 2) / len(x)
     npower = xpower / snr
     return np.random.randn(len(x)) * np.sqrt(npower)
+
+
+# 添加椒盐噪声
+def pepperNoise(count, I):
+    rows, cols = I.shape
+    newI = np.copy(I)
+    for i in range(count):
+        if i % 2 == 0:
+            newI[random.randint(0, rows - 1)][random.randint(0, cols - 1)] = 0
+        else:
+            newI[random.randint(0, rows - 1)][random.randint(0, cols - 1)] = 255
+    return newI
+
+
+# @均值滤波
+def deNoise(d, original):
+    num = d / 2
+    # 这里默认的是3*3模版故 length = 9，
+    maskLength = 9
+    start = int(num)
+    end = int(maskLength - num)
+    rows, cols = original.shape
+    newI = np.zeros(original.shape)
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
+            I = np.sort(original[i - 1:i + 2, j - 1:j + 2].flatten())
+            newI[i, j] = np.mean(I[start:end])
+    return newI
+
+
+def meanDenoise(mask, original):
+    rows, cols = original.shape
+    ImageDenoise = np.zeros(original.shape)
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
+            ImageDenoise[i, j] = np.mean(original[i - 1:i + 2, j - 1:j + 2] * mask)
+    return ImageDenoise
 
 
 # 有选择保边缘平滑方法
@@ -74,32 +113,23 @@ def main():
     for i in range(cols):
         original_noise[:, i] += wgn(original_noise[:, i], 10)
 
-    ImageDenoise = edgeFilter(original_noise)
-
-    plt.figure()
-    show(original, "original", 2, 2, 1)
-    show(original_noise, "original_noise", 2, 2, 2)
-    show(ImageDenoise, "ImageDenoise", 2, 2, 3)
-    show(original - ImageDenoise, "original - ImageDenoise", 2, 2, 4)
-    plt.show()
-
+    original_noise = pepperNoise(100000, original_noise)
+    ImageDenoise = deNoise(6, original_noise)
     mask = np.ones(9).reshape(3, 3)
-    ImageDenoise = meanDenoise(mask, original)
+    ImageMeanDenoise = meanDenoise(mask, original_noise)
+    plt.figure()
+    show(original, "original", 2, 2, 1)
+    show(original_noise, "original_noise", 2, 2, 2)
+    show(ImageDenoise, "ImageDenoise", 2, 2, 3)
+    show(ImageMeanDenoise, "ImageMeanDenoise", 2, 2, 4)
+    plt.show()
+
     plt.figure()
     show(original, "original", 2, 2, 1)
     show(original_noise, "original_noise", 2, 2, 2)
     show(ImageDenoise, "ImageDenoise", 2, 2, 3)
     show(original - ImageDenoise, "original - ImageDenoise", 2, 2, 4)
     plt.show()
-
-
-def meanDenoise(mask, original):
-    rows, cols = original.shape
-    ImageDenoise = np.zeros(original.shape)
-    for i in range(1, rows - 1):
-        for j in range(1, cols - 1):
-            ImageDenoise[i, j] = np.mean(original[i - 1:i + 2, j - 1:j + 2] * mask)
-    return ImageDenoise
 
 
 if __name__ == '__main__':
